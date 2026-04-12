@@ -1,0 +1,16 @@
+camera:
+  frame_id: "camera_link"
+  frame_convention: "optical"
+  intrinsics:
+    fx: 606.35
+    fy: 606.47
+    cx: 318.95
+    cy: 239.77
+
+robot_body_to_camera:
+  translation:
+    x: 0.49
+    y: 0.11
+    z: 0.44
+  rotation:
+    yaw: 0.0
