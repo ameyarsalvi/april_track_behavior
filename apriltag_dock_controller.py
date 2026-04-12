@@ -278,9 +278,12 @@ class AprilTagDockController(object):
             self.termination_tag_id in detected_tag_ids
             and self.is_alignment_state()
         ):
-            self.complete_destination(
-                "Termination tag %d observed during alignment" % self.termination_tag_id
-            )
+            if not self.final_turn_active:
+                self.stop_robot()
+                self.start_final_turn(
+                    "Termination tag %d observed during alignment. Starting final 180-degree turn"
+                    % self.termination_tag_id
+                )
             return
 
         selected_detection = self.extract_target_tag_pose(msg.data, self.target_tag_id)
@@ -314,18 +317,19 @@ class AprilTagDockController(object):
         self.publish_destination_status(False)
         rospy.loginfo("New destination selected: AprilTag id=%d", self.target_tag_id)
 
-    def start_final_turn(self):
-        """Begin the 180-degree turnaround that runs after the robot reaches the target."""
+    def start_final_turn(self, reason=None):
+        """Begin the final turnaround that runs after the robot reaches the target."""
         turn_speed = max(abs(self.final_turn_speed), 1e-3)
-        turn_duration = math.pi / turn_speed
+        turn_duration = 2.0 * math.pi / turn_speed
         self.final_turn_active = True
         self.final_turn_end_time = rospy.Time.now() + rospy.Duration.from_sec(turn_duration)
         self.set_state("FINAL_TURN")
-        rospy.loginfo(
-            "Target distance reached for tag %d. Starting final 180-degree turn at %.3f rad/s",
-            self.target_tag_id,
-            self.final_turn_speed,
-        )
+        if reason is None:
+            reason = "Target distance reached for tag %d. Starting final 2pi turn at %.3f rad/s" % (
+                self.target_tag_id,
+                self.final_turn_speed,
+            )
+        rospy.loginfo("%s", reason)
 
     def extract_detected_tag_ids(self, message_text):
         """Return the set of tag IDs present in the detector message."""
@@ -498,7 +502,7 @@ class AprilTagDockController(object):
         if self.final_turn_active:
             if rospy.Time.now() >= self.final_turn_end_time:
                 self.complete_destination(
-                    "Final 180-degree turn complete for tag %d" % self.target_tag_id
+                    "Final 2pi turn complete for tag %d" % self.target_tag_id
                 )
                 return
 
